@@ -1,4 +1,4 @@
-package com.yourapppackage.widget;
+package com.gofast.widget;
 
 import com.reactnativeandroidwidget.RNWidgetProvider;
 

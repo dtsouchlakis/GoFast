@@ -30,7 +30,7 @@
           android:label="My Hello Widget">
           <intent-filter>
               <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-              <action android:name="com.yourapppackage.WIDGET_CLICK" />
+              <action android:name="com.GoFast.WIDGET_CLICK" />
           </intent-filter>
           <meta-data
               android:name="android.appwidget.provider"

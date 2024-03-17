@@ -5,7 +5,7 @@
  * @format
  */
 import SharedGroupPreferences from 'react-native-shared-group-preferences';
-import React, {useEffect, useMemo} from 'react';
+import React, {useEffect} from 'react';
 import type {PropsWithChildren} from 'react';
 import {
   SafeAreaView,
@@ -16,23 +16,27 @@ import {
   TouchableOpacity,
   useColorScheme,
   View,
+  Image,
 } from 'react-native';
 import * as Icons from 'react-native-heroicons/solid';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, {G, Circle} from 'react-native-svg';
+import {useForm, UseFormReturn, Controller} from 'react-hook-form';
 import {
-  useForm,
-  SubmitHandler,
-  UseFormProps,
-  UseFormReturn,
-  Controller,
-} from 'react-hook-form';
+  dayOfTheWeekFromDate,
+  getFastTimeLeftString,
+  isFastExpired,
+} from './utlis';
+import DatePicker from 'react-native-date-picker';
+import SelectDropdown from 'react-native-select-dropdown';
+import NumericInput from 'react-native-numeric-input';
 
-type Fast = {
+export type Fast = {
   totalHours: number;
   startTime: Date;
   endTime: Date;
+  running: boolean;
 };
 
 type SectionProps = PropsWithChildren<{
@@ -72,30 +76,28 @@ function App(): React.JSX.Element {
 
   const [popUpVisible, setPopUpVisible] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState(0);
-
+  const [showDatePicker, setShowDatePicker] = React.useState<
+    boolean | 'endTime' | 'startTime'
+  >(false);
   const form = useForm<Fast>();
 
-  const storeFast = async (totalHours: number) => {
-    let fast = {
-      totalHours,
-      startTime: new Date().toISOString(),
-      endTime: new Date(new Date().getTime() + totalHours * 60 * 60 * 1000),
-    };
+  const storeFast = async (fast: Fast) => {
     console.log(fast, currentTime, 'asdadssda');
 
     try {
-      await SharedGroupPreferences.setItem('currentFast', fast, group);
       const value = await AsyncStorage.setItem(
         'currentFast',
         JSON.stringify(fast),
       );
       setCurrentTime(1);
-      setFast(fast as unknown as Fast);
+      console.log(fast, 'setFast1');
+
+      setFast(fast);
       if (value !== null) {
         // value previously stored
       }
     } catch (e) {
-      // error reading value
+      console.log(e);
     }
   };
   const backgroundStyle = {
@@ -103,13 +105,18 @@ function App(): React.JSX.Element {
   };
 
   useEffect(() => {
+    console.log('currentFast', fast);
+
     let interval: NodeJS.Timeout | null = null;
-    if (!fast || new Date().getTime() > new Date(fast.endTime).getTime()) {
-      setCurrentTime(0);
-      interval = null;
-    }
+
     if (fast) {
       interval = setInterval(() => {
+        console.log(isFastExpired(fast!), 'isFastExpired(fast)');
+        if (isFastExpired(fast!)) {
+          setFast(null);
+          setCurrentTime(0);
+          return;
+        }
         setCurrentTime(new Date(fast.endTime).getTime() - new Date().getTime());
       }, 1000);
     }
@@ -130,7 +137,11 @@ function App(): React.JSX.Element {
 
       if (value !== null) {
         console.log('setFast', fast);
-        setFast(value);
+        if (new Date().getTime() > new Date(value.endTime).getTime()) {
+          setFast(null);
+        } else {
+          setFast(value);
+        }
         console.log(fast);
       }
     } catch (e) {
@@ -140,6 +151,7 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     getData();
+    console.log(currentTime, fast, 'asdasdasd');
   }, []);
 
   return (
@@ -157,8 +169,51 @@ function App(): React.JSX.Element {
             onSubmit={storeFast}
           />
         )}
+        <DatePicker
+          className=" absolute z-20  w-[90%] bg-white ml-5 bottom-1/2"
+          onConfirm={e => {
+            console.log(e, 'TEEEEEST');
+            let _fast = {
+              ...fast,
+              showDatePicker: e,
+            };
+            storeFast(fast!);
+            setShowDatePicker(false);
+          }}
+          date={new Date()}
+          open={showDatePicker ? true : false}
+          androidVariant="nativeAndroid"
+          fadeToColor="white"
+          modal
+          onCancel={() => {
+            setShowDatePicker(false);
+          }}
+        />
+        <View className="w-full rounded-lg  flex flex-row justify-center items-center">
+          <Text className="text-black dark:text-white text-2xl text-center font-bold">
+            GoFast
+          </Text>
+          <Image
+            className="w-16 h-16 -ml-2"
+            source={require('./assets/logo.png')}
+          />
+        </View>
+        <View className="justify-center items-center bg-gray-300 my-16">
+          <DonutCountDown timeLeft={currentTime} totalTime={fast?.totalHours} />
+          <Text className="text-black dark:text-white p-4 text-start absolute text-5xl font-light">
+            {getFastTimeLeftString(fast, 8)}
+          </Text>
+          <TouchableOpacity
+            className="w-14 h-8 ml-4 z-10 bg-gray-200 dark:bg-black rounded-full absolute flex flex-row justify-center items-center bottom-12"
+            onPress={() => setPopUpVisible(true)}>
+            <Text className="text-black dark:text-white text-sm mr-1">
+              Edit
+            </Text>
+            <Icons.PencilIcon className="w text-black " size={14} />
+          </TouchableOpacity>
+        </View>
 
-        <View className="w-full h-1/3 bg-zinc-300 rounded-lg mt-4 shadow-md shadow-black">
+        {/* <View className="w-full h-1/3 bg-zinc-300 rounded-lg mt-4 shadow-md shadow-black">
           <View className="flex flex-row justify-center">
             <Text className="text-black dark:text-white text-2xl p-4 text-center">
               Current Fast
@@ -182,46 +237,76 @@ function App(): React.JSX.Element {
             Remaining: {Math.floor(currentTime / 60 / 60 / 1000)} hours{' '}
             {Math.floor(currentTime / 60 / 1000) % 60} minutes
           </Text>
-        </View>
-        <TouchableOpacity
-          className="w-full h-12 bg-red-600 rounded-lg mt-4 flex justify-center "
-          onPress={() => setPopUpVisible(true)}>
-          <Text className="text-white dark:text-white text-2xl text-center">
-            New Fast
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          disabled={Number.isNaN(currentTime) || currentTime == 0}
-          className={`w-full h-12 z-10  rounded-lg mt-4 flex justify-center ${
-            Number.isNaN(currentTime) || currentTime == 0
-              ? 'bg-gray-300'
-              : 'bg-green-600'
-          }`}
-          onPress={() => {
-            console.log('REEE');
-
-            setCurrentTime(0);
-            setFast(null);
-            AsyncStorage.removeItem('currentFast');
-          }}>
-          <Text className="text-white text-2xl text-center">Stop Fast</Text>
-        </TouchableOpacity>
-        <View className="flex-1 justify-center items-center mt-8">
-          <DonutCountDown timeLeft={currentTime} totalTime={fast?.totalHours} />
-          <Text className="text-black dark:text-white p-4 text-start absolute text-2xl font-bold">
-            {Math.floor(currentTime / 60 / 60 / 1000)} :{' '}
-            {Math.floor(currentTime / 60 / 1000) % 60}
-          </Text>
-        </View>
-        <View className="relative right-0 bottom-5 flex flex-col justify-around items-end pr-4">
+        </View> */}
+        {!fast ? (
           <TouchableOpacity
-            className="w-10 h-10 mt-4 ml-4  z-10"
+            className="w-[90%] h-16 mx-4  bg-green-800 rounded-full mt-4 flex justify-center "
             onPress={() => setPopUpVisible(true)}>
-            <Icons.CogIcon className="w-6 h-6 text-black" />
+            <Text className="text-white dark:text-white text-3xl text-center font-semibold">
+              New Fast
+            </Text>
           </TouchableOpacity>
-          <Text className="text-black dark:text-white text-sm -mt-2 font-bold">
-            Change fast
-          </Text>
+        ) : (
+          <TouchableOpacity
+            disabled={Number.isNaN(currentTime) || currentTime == 0}
+            className={`w-[90%] h-12 z-10  rounded-lg mt-4 flex justify-center mx-auto ${
+              Number.isNaN(currentTime) || currentTime == 0
+                ? 'bg-gray-300'
+                : 'bg-[#14744aff]'
+            }`}
+            onPress={() => {
+              console.log('REEE');
+
+              setCurrentTime(0);
+              setFast(null);
+              AsyncStorage.removeItem('currentFast');
+            }}>
+            <Text className="text-white text-2xl text-center">Stop Fast</Text>
+          </TouchableOpacity>
+        )}
+        <View className="w-full h-1/3  rounded-lg mt-4  flex flex-row items-center justify-center">
+          <View className="w-1/2 h-full flex flex-col items-center bg-gray-300">
+            <Text className="text-black dark:text-white text-2xl p-4 text-center">
+              Fast Start
+            </Text>
+            <View className="flex flex-row items-center justify-around">
+              <Text className="text-black dark:text-white text-lg text-start ">
+                {fast?.endTime
+                  ? `${dayOfTheWeekFromDate(fast?.startTime)} ${fast?.startTime
+                      .toLocaleString()
+                      .slice(11, 19)}`
+                  : ''}
+              </Text>
+              <TouchableOpacity
+                className=" h-4 ml-2 z-10 "
+                onPress={() => {
+                  setShowDatePicker('startTime');
+                }}>
+                <Icons.PencilIcon className="w text-black " size={14} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View className="w-1/2 h-full flex flex-col items-center">
+            <Text className="text-black dark:text-white text-2xl p-4 text-center">
+              Fast End
+            </Text>
+            <View className="flex flex-row items-center">
+              <Text className="text-black dark:text-white text-lg text-start">
+                {fast?.endTime
+                  ? `${dayOfTheWeekFromDate(fast?.endTime)} ${fast?.endTime
+                      .toLocaleString()
+                      .slice(11, 19)}`
+                  : ''}
+              </Text>
+              <TouchableOpacity
+                className="h-4 ml-2 z-10  "
+                onPress={() => {
+                  setShowDatePicker('endTime');
+                }}>
+                <Icons.PencilIcon className="w text-black " size={14} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -268,26 +353,41 @@ const PopUp = (props: {
       onTouchStart={e => {
         e.currentTarget == e.target && props.setPopUpVisible(false);
       }}>
-      <View className="w-full  bg-white dark:bg-zinc-300 rounded-lg mt-4 p-4 pb-12">
+      <View className="w-full  bg-white dark:bg-zinc-300 rounded-lg mt-4 p-4 pb-12 flex items-center justify-center">
         <Text>Enter the amount of time you want to spend on this fast</Text>
 
         <Controller
           name="totalHours"
           control={props.form.control}
           render={({field: {value, onChange, onBlur}}) => (
-            <TextInput
-              className="w-full h-12 bg-zinc-300 rounded-lg mt-4 shadow-md shadow-black"
-              keyboardType="numeric"
-              value={value?.toString()}
-              onChangeText={onChange}
-              onBlur={onBlur}
+            <SelectDropdown
+              data={Array.from({length: 24}, (_, i) => i + 1)}
+              onSelect={(selectedItem, index) => {
+                onChange(selectedItem);
+              }}
+              defaultValue={value}
             />
           )}
         />
+        <Text className="text-gray-600">or select a custom duration</Text>
+        <Controller
+          name="totalHours"
+          control={props.form.control}
+          render={({field: {value, onChange, onBlur}}) => (
+            <SelectDropdown
+              data={Array.from({length: 24}, (_, i) => i + 1)}
+              onSelect={(selectedItem, index) => {
+                onChange(selectedItem);
+              }}
+              defaultValue={value}
+            />
+          )}
+        />
+
         <TouchableOpacity
           className="w-full h-12 bg-red-600 rounded-lg mt-4 flex justify-center items-center"
           onPress={() => {
-            console.log(props.form.getValues('totalHours'));
+            console.log(props.form.getValues('totalHours'), 'TotalHours');
 
             props.setPopUpVisible(false);
             props.onSubmit(props.form.getValues('totalHours'));
@@ -306,44 +406,42 @@ const DonutCountDown = ({
   totalTime?: number;
   timeLeft?: number;
 }) => {
-  const radius = 70;
+  const radius = 80;
   const circleCircumference = 2 * Math.PI * radius;
-
   let percentage = 0;
-  let strokeDashoffset = 0;
+  let strokeDashoffset = circleCircumference;
 
   if (totalTime && timeLeft !== undefined) {
     const spentAmount = totalTime * 3600 * 1000 - timeLeft;
     percentage = (spentAmount / (totalTime * 3600 * 1000)) * 100;
-    strokeDashoffset =
-      circleCircumference - circleCircumference * (1 - percentage / 100);
+    strokeDashoffset = circleCircumference * (percentage / 100);
   }
+
   console.log(percentage, strokeDashoffset);
 
   return (
     <>
-      <Svg
-        viewBox="0 0 180 180"
-        className="mx-auto h-72 w-72 rounded-full mt-4 shadow-md shadow-black ">
+      <Svg viewBox="0 0 180 180" className="mx-auto h-72 w-72 rounded-full ">
         <G rotation={-90} originX="90" originY="90">
           <Circle
             cx="50%"
             cy="50%"
             r={radius}
-            stroke="#F1F6F9"
+            stroke="#f6f925"
             fill="transparent"
-            strokeWidth="40"
+            strokeWidth="15"
+            strokeDasharray={circleCircumference}
+            strokeLinecap="round"
           />
-
           <Circle
             cx="50%"
             cy="50%"
             r={radius}
-            stroke="#14274E"
+            stroke="#14744aff"
             fill="transparent"
-            strokeWidth="40"
+            strokeWidth="19"
             strokeDasharray={circleCircumference}
-            strokeDashoffset={strokeDashoffset ? strokeDashoffset : 0}
+            strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
           />
         </G>

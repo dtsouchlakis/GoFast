@@ -11,6 +11,7 @@
     "windows": "react-native run-windows"
   },
   "dependencies": {
+    "react-native-numeric-input": "https://github.com/rares-nandra/react-native-numeric-input.git",
     "@react-native-async-storage/async-storage": "^1.22.3",
     "autoprefixer": "^10.4.18",
     "fabric": "^5.3.0",
@@ -23,10 +24,13 @@
     "react-native": "0.73.5",
     "react-native-android-widget": "^0.11.2",
     "react-native-cli": "^2.0.1",
+    "react-native-date-picker": "^4.4.1",
     "react-native-heroicons": "^4.0.0",
     "react-native-pie-chart": "^3.0.2",
+    "react-native-select-dropdown": "^3.4.0",
     "react-native-shared-group-preferences": "^1.1.24",
     "react-native-svg": "^15.1.0",
+    "react-native-vector-icons": "^10.0.3",
     "react-native-web": "^0.19.10",
     "react-native-windows": "0.73.9",
     "tailwindcss": "3.3.2"
