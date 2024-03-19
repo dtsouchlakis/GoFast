@@ -4,6 +4,12 @@ function isFastRunning(fast: Fast): boolean {
   if (!fast || !fast.startTime || !fast.endTime || !fast.totalHours) {
     return false;
   }
+
+  if (typeof fast.startTime === 'string' || typeof fast.endTime === 'string') {
+    fast.startTime = new Date(fast.startTime);
+    fast.endTime = new Date(fast.endTime);
+  }
+
   const now = new Date();
   return (
     fast.startTime.getTime() < now.getTime() &&
@@ -47,6 +53,7 @@ function fastToDates(fast: Fast): Fast {
     totalHours: fast.totalHours,
     startTime: new Date(fast.startTime),
     endTime: new Date(fast.endTime),
+    running: isFastRunning(fast),
   };
 }
 
@@ -72,6 +79,7 @@ function dayOfTheWeekFromDate(day: Date): string {
   if (!day) {
     return '';
   }
+
   if (typeof day == 'string') {
     day = new Date(day);
   }
@@ -101,6 +109,13 @@ function dayOfTheWeekFromDate(day: Date): string {
   return days[day.getDay()];
 }
 
+const isObjectEmpty = (objectName: {} | null) => {
+  if (!objectName) {
+    return true;
+  }
+  return Object.keys(objectName).length === 0;
+};
+
 export {
   isFastRunning,
   isFastExpired,
@@ -109,4 +124,5 @@ export {
   fastToDates,
   numberToTime,
   dayOfTheWeekFromDate,
+  isObjectEmpty,
 };
