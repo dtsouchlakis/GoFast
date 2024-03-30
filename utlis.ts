@@ -11,6 +11,7 @@ function isFastRunning(fast: Fast): boolean {
   }
 
   const now = new Date();
+
   return (
     fast.startTime.getTime() < now.getTime() &&
     now.getTime() < fast.endTime.getTime()
@@ -116,6 +117,19 @@ const isObjectEmpty = (objectName: {} | null) => {
   return Object.keys(objectName).length === 0;
 };
 
+function getPercentLeft(fast: Fast | null): number {
+  if (!fast) {
+    return 0;
+  }
+
+  console.log(
+    (fast.startTime.getTime() / new Date().getTime()) * 100,
+    'percent',
+  );
+
+  return (fast.startTime.getTime() / new Date().getTime()) * 100;
+}
+
 export {
   isFastRunning,
   isFastExpired,
@@ -125,4 +139,5 @@ export {
   numberToTime,
   dayOfTheWeekFromDate,
   isObjectEmpty,
+  getPercentLeft,
 };

@@ -1,12 +1,39 @@
 import React from 'react';
-import {FlexWidget, TextWidget} from 'react-native-android-widget';
+import {
+  FlexWidget,
+  ImageWidget,
+  SvgWidget,
+  TextWidget,
+} from 'react-native-android-widget';
 import {Fast} from './App';
-import {getFastTimeLeft, isFastRunning} from './utlis';
+import {getFastTimeLeft, getPercentLeft, isFastRunning} from './utlis';
 
 export function HelloWidget(props: Fast) {
   const currTime = new Date().getTime();
-  console.log(currTime, props, 'asdadssda');
-  const timeLeft = getFastTimeLeft(props);
+  const circumference = 251.2; // Circumference of the circle (2 * Math.PI * 40)
+  let percentage = 0;
+  let strokeDashoffset = circumference;
+
+  if (isFastRunning(props!)) {
+    percentage = getPercentLeft(props!);
+    strokeDashoffset = percentage / 100;
+  }
+
+  const timeLeft = getFastTimeLeft(props!);
+  const svgString = `
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <circle
+    cx="50"
+    cy="50"
+    r="60"
+    fill="none"
+    stroke="#000"
+    stroke-width="40"
+    stroke-dasharray="${circumference}"
+    stroke-dashoffset="${strokeDashoffset}"
+    transform="rotate(-90 50 50)"
+  />
+</svg>`;
   return (
     <FlexWidget
       style={{
@@ -36,6 +63,13 @@ export function HelloWidget(props: Fast) {
           }}
         />
       )}
+      <SvgWidget svg={svgString} style={{height: 72, width: 72}} />
+
+      <ImageWidget
+        image={require('./assets/cap.png')}
+        imageWidth={88}
+        imageHeight={88}
+      />
     </FlexWidget>
   );
 }

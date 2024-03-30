@@ -4,6 +4,9 @@
  *
  * @format
  */
+import notifee from '@notifee/react-native';
+import {AndroidColor} from '@notifee/react-native';
+
 import {AnimatedCircularProgress} from 'react-native-circular-progress';
 import React, {useEffect} from 'react';
 import type {PropsWithChildren} from 'react';
@@ -27,52 +30,29 @@ import {
   dayOfTheWeekFromDate,
   getFastTimeLeft,
   getFastTimeLeftString,
+  getPercentLeft,
   isFastExpired,
   isFastRunning,
   isObjectEmpty,
 } from './utlis';
 import DatePicker from 'react-native-date-picker';
 import SelectDropdown from 'react-native-select-dropdown';
-import {Circle} from 'react-native-svg';
+import {RadioButton} from 'react-native-paper';
+import {requestWidgetUpdate} from 'react-native-android-widget';
+import {HelloWidget} from './HelloWidget';
 
 export type Fast = {
   totalHours: number;
   startTime: Date;
   endTime: Date;
   running: boolean;
+  intermittent?: boolean;
 };
 
 type SectionProps = PropsWithChildren<{
   title: string;
 }>;
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-const group = 'group.gofast';
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   const [fast, setFast] = React.useState<Fast | null>(null);
@@ -116,7 +96,18 @@ function App(): React.JSX.Element {
       interval = setInterval(() => {
         console.log(isFastExpired(fast!), 'isFastExpired(fast)', fast);
         if (isFastExpired(fast!)) {
-          setFast(null);
+          if (fast?.intermittent) {
+            setFast(null);
+            setCurrentTime(0);
+            return;
+          }
+          setFast({
+            startTime: new Date(),
+            endTime: dayjs(new Date()).add(fast!.totalHours, 'h').toDate(),
+            totalHours: fast!.totalHours,
+            running: true,
+            intermittent: fast?.intermittent,
+          });
           setCurrentTime(0);
           return;
         }
@@ -154,7 +145,13 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     getData();
-    console.log(currentTime, fast, 'asd');
+    requestWidgetUpdate({
+      widgetName: 'HelloWidget',
+      renderWidget: () => <HelloWidget {...fast!} />,
+      widgetNotFound: () => {
+        // Called if no widget is present on the home screen
+      },
+    });
   }, []);
 
   return (
@@ -164,7 +161,7 @@ function App(): React.JSX.Element {
         backgroundColor={backgroundStyle.backgroundColor}
       />
 
-      <View className="w-full h-full flex bg-white dark:bg-black  relative">
+      <View className="w-full h-full flex bg-white dark:bg-gray-800  relative">
         {popUpVisible && (
           <PopUp
             form={form}
@@ -177,12 +174,13 @@ function App(): React.JSX.Element {
                   .add(form.getValues().totalHours, 'h')
                   .toDate(),
                 running: true,
+                intermittent: form.getValues().intermittent,
               });
             }}
           />
         )}
         <DatePicker
-          className=" absolute z-20  w-[90%] bg-white ml-5 bottom-1/2"
+          className=" absolute z-20  w-[90%] bg-white  ml-5 bottom-1/2"
           onConfirm={e => {
             console.log(e, 'TEEEEEST');
             let _fast = {
@@ -201,7 +199,7 @@ function App(): React.JSX.Element {
             setShowDatePicker(false);
           }}
         />
-        <View className="w-full rounded-lg  flex flex-row justify-center items-center">
+        <View className="w-full rounded-lg  flex flex-row justify-center items-center bg-white dark:bg-gray-700">
           <Text className="text-black dark:text-white text-2xl text-center font-bold">
             GoFast
           </Text>
@@ -210,16 +208,16 @@ function App(): React.JSX.Element {
             source={require('./assets/logo.png')}
           />
         </View>
-        <View className="justify-center items-center mt-6">
-          <DonutCountDown timeLeft={currentTime} totalTime={fast?.totalHours} />
+        <View className="justify-center items-center mt-6 bg-white dark:bg-gray-800">
+          <DonutCountDown fast={fast!} />
           <View className="absolute w-full  flex justify-center items-center">
             <Text className="text-black dark:text-white p-4 text-start  text-5xl font-light">
               {getFastTimeLeftString(fast, 8)}
             </Text>
-            <View className="absolute -bottom-12 flex flex-row justify-evenly w-1/2 z-10">
-              <TouchableOpacity className="rounded-full z-50 w-8 h-8 text-black dark:text-white border-2 border-gray-400">
+            <View className="absolute -bottom-14 flex flex-row justify-evenly w-1/2 z-10">
+              <TouchableOpacity className="rounded-full z-50 w-8 h-8 text-black dark:text-white border-2 border-gray-400 dark:border-gray-300">
                 <Text
-                  className="text-xl text-center"
+                  className="text-3xl text-center text-black dark:text-white -mt-1"
                   onPress={() => {
                     fast?.totalHours &&
                       fast.totalHours > 0 &&
@@ -234,12 +232,12 @@ function App(): React.JSX.Element {
                   -
                 </Text>
               </TouchableOpacity>
-              <Text className="text-black dark:text-white px-4 my-auto py-1 flex items-center justify-center  border-2 border-gray-400 rounded-full ">
+              <Text className="text-black dark:text-white px-4 my-auto py-1 flex items-center justify-center  border-2 border-gray-400 dark:border-gray-300 rounded-full ">
                 {fast && getFastTimeLeft(fast)[0]} HRS
               </Text>
-              <TouchableOpacity className="rounded-full z-[100] w-8 h-8 text-black dark:text-white border-2 border-gray-400">
+              <TouchableOpacity className="rounded-full z-[100] w-8 h-8 text-black dark:text-white border-2 border-gray-400 dark:border-gray-300">
                 <Text
-                  className="text-xl text-center"
+                  className="text-xl text-center text-black dark:text-white"
                   onPress={() => {
                     fast?.totalHours &&
                       storeFast({
@@ -258,10 +256,10 @@ function App(): React.JSX.Element {
           </View>
         </View>
 
-        <View className="w-full rounded-lg flex flex-row items-center justify-center -mt-6">
+        <View className="w-full rounded-lg flex flex-row items-center justify-center -mt-6 bg-white dark:bg-gray-800">
           <View className="w-1/2  flex flex-col items-start  justify-end pl-4">
             <View className="flex flex-row items-center ">
-              <Text className="text-gray-400 dark:text-white text-md text-center ml-2">
+              <Text className="text-gray-800 dark:text-gray-200 text-md text-center ml-2">
                 Fast Start
               </Text>
               <TouchableOpacity
@@ -269,7 +267,10 @@ function App(): React.JSX.Element {
                 onPress={() => {
                   setShowDatePicker('endTime');
                 }}>
-                <Icons.PencilIcon className="w text-black " size={14} />
+                <Icons.PencilIcon
+                  className=" text-black dark:text-white"
+                  size={14}
+                />
               </TouchableOpacity>
             </View>
             <View className="flex flex-row items-center">
@@ -284,7 +285,7 @@ function App(): React.JSX.Element {
           </View>
           <View className="w-1/2  flex flex-col items-end  justify-end pr-4">
             <View className="flex flex-row items-center ">
-              <Text className="text-gray-400 dark:text-white text-md text-center ml-2">
+              <Text className="text-gray-800 dark:text-gray-200 text-md text-center ml-2">
                 Fast End
               </Text>
               <TouchableOpacity
@@ -292,11 +293,14 @@ function App(): React.JSX.Element {
                 onPress={() => {
                   setShowDatePicker('endTime');
                 }}>
-                <Icons.PencilIcon className="w text-black " size={14} />
+                <Icons.PencilIcon
+                  className="text-black dark:text-white "
+                  size={14}
+                />
               </TouchableOpacity>
             </View>
             <View className="flex flex-row items-center">
-              <Text className="text-black dark:text-white text-sm text-start">
+              <Text className="text-black dark:text-gray-200 text-sm text-start">
                 {fast?.endTime
                   ? `${dayOfTheWeekFromDate(fast?.endTime)} ${fast?.endTime
                       .toLocaleString()
@@ -307,36 +311,11 @@ function App(): React.JSX.Element {
           </View>
         </View>
 
-        {/* <View className="w-full h-1/3 bg-zinc-300 rounded-lg mt-4 shadow-md shadow-black">
-          <View className="flex flex-row justify-center">
-            <Text className="text-black dark:text-white text-2xl p-4 text-center">
-              Current Fast
-            </Text>
-          </View>
-          <Text className="text-black dark:text-white text-lg  p-4 text-start">
-            Start:{' '}
-            {fast?.startTime &&
-              fast?.startTime.toLocaleString().slice(0, 10) +
-                ' ' +
-                fast?.startTime.toLocaleString().slice(11, 19)}
-          </Text>
-          <Text className="text-black dark:text-white text-lg  p-4 text-start">
-            End:{' '}
-            {fast?.endTime &&
-              fast?.endTime.toLocaleString().slice(0, 10) +
-                ' ' +
-                fast?.endTime.toLocaleString().slice(11, 19)}
-          </Text>
-          <Text className="text-black dark:text-white text-lg  p-4 text-start">
-            Remaining: {Math.floor(currentTime / 60 / 60 / 1000)} hours{' '}
-            {Math.floor(currentTime / 60 / 1000) % 60} minutes
-          </Text>
-        </View> */}
         {isObjectEmpty(fast) || !fast?.running ? (
           <TouchableOpacity
-            className="w-[90%] h-16 mx-4  bg-green-800 rounded-full mt-12 flex justify-center"
+            className="w-[90%] h-16 mx-4  bg-green-800  rounded-full mt-12 flex justify-center"
             onPress={() => setPopUpVisible(true)}>
-            <Text className="text-white dark:text-white text-3xl text-center font-semibold">
+            <Text className="text-white dark:text-gray-100 text-3xl text-center font-semibold">
               New Fast
             </Text>
           </TouchableOpacity>
@@ -393,9 +372,15 @@ const PopUp = (props: {
 }) => {
   const isDarkMode = useColorScheme() === 'dark';
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  const fastOptions = Array.from({length: 24}, (_, i) => {
+    return {
+      label: `${i + 1}:${24 - i - 1}`,
+      value: i + 1,
+    };
+  });
+
+  console.log(fastOptions, 'fastOptions');
+
   return (
     <View
       className="w-full h-full absolute z-[100] px-4 flex justify-center items-center"
@@ -405,7 +390,7 @@ const PopUp = (props: {
       onTouchStart={e => {
         e.currentTarget == e.target && props.setPopUpVisible(false);
       }}>
-      <View className="w-full  bg-white dark:bg-zinc-300 rounded-lg mt-4 p-4 pb-12 flex items-center justify-center">
+      <View className="w-full  bg-white dark:bg-zinc-300 rounded-2xl mt-4 p-4 pb-8 flex items-center space-y-4">
         <Text>Enter the amount of time you want to spend on this fast</Text>
 
         <Controller
@@ -413,9 +398,10 @@ const PopUp = (props: {
           control={props.form.control}
           render={({field: {value, onChange, onBlur}}) => (
             <SelectDropdown
-              data={Array.from({length: 24}, (_, i) => i + 1)}
+              data={fastOptions.map(x => x.label)}
+              dropdownIconPosition="right"
               onSelect={(selectedItem, index) => {
-                onChange(selectedItem);
+                onChange(fastOptions[index].value);
               }}
               defaultValue={value}
             />
@@ -435,29 +421,44 @@ const PopUp = (props: {
             />
           )}
         />
+        <Text className="text-gray-600">Is fast recurring</Text>
+        <Controller
+          name="intermittent"
+          control={props.form.control}
+          render={({field: {value, onChange, onBlur}}) => (
+            <RadioButton
+              status={value ? 'checked' : 'unchecked'}
+              onPress={() => onChange(!value)}
+              color="black"
+              value="true"
+            />
+          )}
+        />
 
-        <TouchableOpacity
-          className="w-full h-12 rounded-lg mt-4 flex justify-center items-center"
-          onPress={() => {
-            console.log(props.form.getValues('totalHours'), 'TotalHours');
+        <View className="flex flex-row justify-end w-full items-center space-x-6">
+          <TouchableOpacity
+            className="h-4"
+            onPress={() => {
+              props.setPopUpVisible(false);
+            }}>
+            <Text className="text-cyan-800 text-sm">Cancel</Text>
+          </TouchableOpacity>
 
-            props.setPopUpVisible(false);
-            props.onSubmit(props.form.getValues('totalHours'));
-          }}>
-          <Text className="text-red-600 text-2xl text-center flex">Save</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            className="h-4"
+            onPress={() => {
+              props.setPopUpVisible(false);
+              props.onSubmit(props.form.getValues('totalHours'));
+            }}>
+            <Text className=" text-cyan-800 text-sm">Save</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 };
 
-const DonutCountDown = ({
-  totalTime,
-  timeLeft,
-}: {
-  totalTime?: number;
-  timeLeft?: number;
-}) => {
+function DonutCountDown({fast}: {fast?: Fast}) {
   const {height, width} = useWindowDimensions();
 
   const radius = 80;
@@ -465,13 +466,11 @@ const DonutCountDown = ({
   let percentage = 0;
   let strokeDashoffset = circleCircumference;
 
-  if (totalTime && timeLeft !== undefined) {
-    const spentAmount = totalTime * 3600 * 1000 - timeLeft;
-    percentage = (spentAmount / (totalTime * 3600 * 1000)) * 100;
-    strokeDashoffset = circleCircumference * (percentage / 100);
+  if (isFastRunning(fast!)) {
+    percentage = getPercentLeft(fast!);
+    strokeDashoffset = percentage / 100;
   }
 
-  console.log(percentage, strokeDashoffset);
   const segments = [
     {
       filledColor: '#28E037',
@@ -511,4 +510,4 @@ const DonutCountDown = ({
       />
     </View>
   );
-};
+}
