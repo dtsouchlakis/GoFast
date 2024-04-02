@@ -136,8 +136,12 @@ function getPercentLeft(fast: Fast | null): number {
   let now = new Date().getTime();
   let totalTime = fast.endTime.getTime() - fast.startTime.getTime();
   let progress = now - fast.startTime.getTime();
-
-  return 100 - (progress / totalTime) * 100;
+  //if it is fasting time the percentage goes upward otherwise it goes downward
+  if (fast.state === "fasting") {
+    return 100 - (progress / totalTime) * 100;
+  } else {
+    return (progress / totalTime) * 100;
+  }
 }
 
 // Notifications
@@ -168,7 +172,7 @@ const scheduleNotification = async (fast: Fast) => {
       showTimestamp: true,
       showChronometer: true,
       ongoing: true,
-      chronometerDirection: "down",
+      chronometerDirection: `${fast.state === "fasting" ? "up" : "down"}`,
       onlyAlertOnce: true,
       progress: {
         max: 100,

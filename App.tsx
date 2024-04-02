@@ -47,6 +47,7 @@ export type Fast = {
   running: boolean;
   intermittent?: boolean;
   timeLeft?: number;
+  state?: "fasting" | "eating";
 };
 
 type SectionProps = PropsWithChildren<{
@@ -101,17 +102,21 @@ function App(): React.JSX.Element {
         console.log(isFastExpired(fast!), "isFastExpired(fast)", fast);
         if (isFastExpired(fast!)) {
           scheduleNotification(fast);
-          if (fast?.intermittent) {
+
+          if (!fast?.intermittent) {
             setFast(null);
             return;
           }
 
+          let _totalHours = 24 - fast.totalHours;
+          console.error(_totalHours, fast.state);
           let _fast = {
             startTime: new Date(),
-            endTime: dayjs(new Date()).add(fast!.totalHours, "h").toDate(),
-            totalHours: fast!.totalHours,
+            endTime: dayjs(new Date()).add(_totalHours, "h").toDate(),
+            totalHours: _totalHours,
             running: true,
             intermittent: fast?.intermittent,
+            state: fast.state === "fasting" ? "eating" : "fasting",
           } as Fast;
           let timeLeft = absTimeLeft(_fast);
 
@@ -181,6 +186,7 @@ function App(): React.JSX.Element {
                   .toDate(),
                 running: true,
                 intermittent: form.getValues().intermittent,
+                state: "fasting",
               });
             }}
           />
@@ -511,7 +517,7 @@ function DonutCountDown({ fast }: { fast?: Fast }) {
               style={{
                 position: "absolute",
                 top: center.y - 55,
-                left: center.x - 40,
+                left: center.x - 50,
                 zIndex: 100,
               }}
             />
