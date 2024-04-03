@@ -475,8 +475,6 @@ function DonutCountDown({ fast }: { fast?: Fast }) {
                 zIndex: 100,
                 top: center.y - 60,
                 left: center.x - 20,
-
-                backgroundColor: "#f6f925",
               }}
             />
           </View>
