@@ -170,6 +170,19 @@ function absTimeLeft(fast: Fast | null): number {
   return totalTime - (now - fast.startTime.getTime());
 }
 
+function relativeDateTime(date: Date | undefined | null): string {
+  if (!date) {
+    return "";
+  }
+  let dayOfTheWeek = dayOfTheWeekFromDate(date);
+  let time =
+    date.toLocaleTimeString().length <= 10
+      ? date.toLocaleTimeString().slice(0, 4)
+      : date.toLocaleTimeString().slice(0, 5);
+
+  return `${dayOfTheWeek} ${time}`;
+}
+
 // Helpers
 
 /**
@@ -275,4 +288,5 @@ export {
   requestUserPermission,
   cancelNotification,
   scheduleNotification,
+  relativeDateTime,
 };

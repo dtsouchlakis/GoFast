@@ -29,6 +29,7 @@ import {
   scheduleNotification,
   requestUserPermission,
   absTimeLeft,
+  relativeDateTime,
 } from "./utlis";
 import DatePicker from "react-native-date-picker";
 import SelectDropdown from "react-native-select-dropdown";
@@ -277,11 +278,7 @@ function App(): React.JSX.Element {
             </View>
             <View className="flex flex-row items-center">
               <Text className="text-black dark:text-white text-sm">
-                {fast?.endTime
-                  ? `${dayOfTheWeekFromDate(fast?.startTime)} ${fast?.startTime
-                      .toLocaleString()
-                      .slice(9, 14)}`
-                  : ""}
+                {fast?.startTime && relativeDateTime(fast?.startTime)}
               </Text>
             </View>
           </View>
@@ -300,11 +297,7 @@ function App(): React.JSX.Element {
             </View>
             <View className="flex flex-row items-center">
               <Text className="text-black dark:text-white text-sm">
-                {fast?.endTime
-                  ? `${dayOfTheWeekFromDate(fast?.endTime)} ${fast?.endTime
-                      .toLocaleString()
-                      .slice(9, 14)}`
-                  : ""}
+                {fast?.endTime && relativeDateTime(fast?.endTime)}
               </Text>
             </View>
           </View>
@@ -477,10 +470,13 @@ function DonutCountDown({ fast }: { fast?: Fast }) {
               className=" w-24 h-24 "
               resizeMode="contain"
               style={{
+                transform: [{ rotate: "-18deg" }],
                 position: "absolute",
-                top: center.y - 50,
-                left: center.x - 9,
                 zIndex: 100,
+                top: center.y - 60,
+                left: center.x - 20,
+
+                backgroundColor: "#f6f925",
               }}
             />
           </View>
